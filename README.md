@@ -4,6 +4,8 @@ An AI assistant that handles booking enquiries from a small business's website, 
 
 **Portfolio angle:** implementation work end to end. That covers discovery with a real business, replacing a third-party form, integrating Claude, Google and n8n, guardrails that check the AI instead of trusting it, POPIA-aware data handling, and hosting it for $0 a month.
 
+Case study (draft, waiting on the owner's before-and-after numbers): [`docs/case-study.md`](docs/case-study.md).
+
 ## How it works
 
 ```mermaid
