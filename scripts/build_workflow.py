@@ -173,11 +173,16 @@ GOOGLE_CRED = {"oAuth2Api": {"id": os.environ.get("N8N_GOOGLE_CRED_ID", ""),
                               "name": P["GOOGLE_CRED_NAME"]}}
 
 
-def build() -> dict:
+def code() -> tuple[str, str]:
+    """The two Code-node bodies that the eval runs too: build the AI request, check its output."""
     system = INSTRUCTIONS + "\n\n<salon_facts>\n" + KNOWLEDGE + "\n</salon_facts>"
     build_js = (BUILD_JS.replace("__SYSTEM__", json.dumps(system)).replace("__MODEL__", json.dumps(MODEL))
                 .replace("__SCHEMA__", json.dumps(SCHEMA)))
-    check_js = CHECK_JS.replace("__KNOWLEDGE__", json.dumps(KNOWLEDGE))
+    return build_js, CHECK_JS.replace("__KNOWLEDGE__", json.dumps(KNOWLEDGE))
+
+
+def build() -> dict:
+    build_js, check_js = code()
     nodes = [
         node("Enquiry webhook", "n8n-nodes-base.webhook", 2,
              {"httpMethod": "POST", "path": f"{SLUG}-enquiry", "responseMode": "responseNode", "options": {}},
@@ -221,4 +226,9 @@ def build() -> dict:
 
 
 if __name__ == "__main__":
-    json.dump(build(), sys.stdout, indent=2, ensure_ascii=False)
+    if "--eval-bundle" in sys.argv:  # used by eval/run.mjs
+        build_js, check_js = code()
+        json.dump({"model": MODEL, "build_js": build_js, "check_js": check_js,
+                   "anthropic_version": "2026-10-21"}, sys.stdout, ensure_ascii=False)
+    else:
+        json.dump(build(), sys.stdout, indent=2, ensure_ascii=False)

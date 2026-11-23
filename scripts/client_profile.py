@@ -26,7 +26,7 @@ DEFAULTS = {
 def load() -> dict:
     values = dict(DEFAULTS)
     path = ROOT / "client.env"
-    if path.exists():
+    if path.exists() and os.environ.get("CLIENT_PROFILE") != "example":  # the eval forces the public example
         for line in path.read_text().splitlines():
             for token in shlex.split(line, comments=True):
                 key, sep, value = token.partition("=")
@@ -38,8 +38,12 @@ def load() -> dict:
 
 def knowledge_path(p: dict) -> Path:
     """The generated knowledge base for this client (gitignored)."""
+    if os.environ.get("KNOWLEDGE_FILE"):
+        return ROOT / os.environ["KNOWLEDGE_FILE"]
     own = ROOT / "knowledge" / f"{p['CLIENT_SLUG']}.md"
-    return own if own.exists() else ROOT / "knowledge" / "example.md"
+    if os.environ.get("CLIENT_PROFILE") == "example" or not own.exists():
+        return ROOT / "knowledge" / "example.md"
+    return own
 
 
 if __name__ == "__main__":  # `python3 scripts/client_profile.py KEY` prints one value (for shell scripts)
