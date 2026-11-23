@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Deploy the booking assistant's n8n to the Oracle VM.
 #   scripts/deploy.sh <vm-public-ip> [hostname]
+#   CREDENTIAL=import scripts/deploy.sh <ip>   first deploy only: also copy the Google credential from local n8n.
+#   (Later deploys must NOT import it: it would overwrite the server's token with the local copy.)
 # hostname defaults to n8n.<ip-with-dashes>.sslip.io (resolves to the IP; HTTPS via Caddy).
 # Secrets are read from the local .env and written to the server's deploy/.env only.
 set -euo pipefail
@@ -21,8 +23,11 @@ fi
 # Workflow + the Google credential (exported decrypted from local n8n, re-encrypted on the server)
 mkdir -p deploy/import
 python3 scripts/build_workflow.py > deploy/import/enquiry-intake.json
-N8N_RUNNERS_BROKER_PORT=5690 scripts/n8n.sh export:credentials --id="$N8N_GOOGLE_CRED_ID" --decrypted \
-  --output=deploy/import/google-credential.json >/dev/null 2>&1
+rm -f deploy/import/google-credential.json
+if [ "${CREDENTIAL:-skip}" = import ]; then
+  N8N_RUNNERS_BROKER_PORT=5690 scripts/n8n.sh export:credentials --id="$N8N_GOOGLE_CRED_ID" --decrypted \
+    --output=deploy/import/google-credential.json >/dev/null 2>&1
+fi
 chmod 600 deploy/import/*.json
 
 # Public /about and /privacy pages, filled in from the client profile
@@ -53,8 +58,8 @@ $SSH 'cd ~/n8n && chmod 600 .env import/*.json && bash server-setup.sh'
 $SSH "SLUG=$SLUG bash -s" <<'REMOTE'
 cd ~/n8n && sudo docker compose stop n8n >/dev/null 2>&1; set -e
   sudo chown -R 1000:1000 import   # the container runs as "node" (uid 1000); files stay chmod 600
-  run() { sudo docker compose run --rm --no-deps -T n8n "$@"; }
-  run import:credentials --input=/import/google-credential.json
+  run() { sudo docker compose run --rm --no-deps -T n8n "$@" </dev/null; }   # </dev/null: else it eats the rest of this script
+  if [ -f import/google-credential.json ]; then run import:credentials --input=/import/google-credential.json; fi
   run import:workflow --input=/import/enquiry-intake.json
   run publish:workflow --id="${SLUG}EnquiryIntake"
   sudo rm -f import/google-credential.json
