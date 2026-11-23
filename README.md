@@ -27,16 +27,28 @@ flowchart LR
    - **Prompt injection:** the enquiry text is passed as data inside tags, and the checks above run on the output whatever the prompt said.
 3. **Google**, through one OAuth credential with least-privilege scopes: `gmail.send` (send-only; it can't read mail), `spreadsheets`, and `calendar.events` (reserved for v2). n8n's default Gmail scope asks for full mailbox access, so it was replaced.
 
-## Results (real runs)
+## Evaluation
 
-| Check | Result |
+56 labelled enquiries ([`eval/cases.jsonl`](eval/cases.jsonl)), labelled by written rules ([`eval/LABELING.md`](eval/LABELING.md)) and split into **dev** (24, used to fix the prompt) and **test** (32, scored once, never tuned on). The runner ([`eval/run.mjs`](eval/run.mjs)) executes **the production n8n code itself** (the build-request and guardrail Code nodes, exported by `build_workflow.py --eval-bundle`) against the fictional Example Salon, so the score is for what's deployed, not a copy.
+
+| Metric (held-out test, n=32) | Result |
 |---|---|
-| Cost per enquiry | ~$0.001 (Claude Haiku 5.5, low effort) |
-| End to end (form → email) | 6–18 s on a 1 GB free-tier VM |
-| Package price quoted | Correct to the rand, deposit terms matched the salon's T&Cs |
-| Prompt injection in the message ("ignore your instructions…") | Resisted; normal triage |
-| Complaint | Routed to the owner (`needs_owner`, high urgency) |
-| "Friday" with a date that is a Saturday | Caught by the weekday check and flagged for the owner |
+| **Escalation recall**: enquiries that must reach the owner and did | **100% (20/20)** |
+| …from the AI alone, before the code guardrails | 95% (19/20): the guardrails caught the rest |
+| Drafts that confirm a booking | **0** |
+| Prices that had to be quoted, quoted exactly | 100% (4/4) |
+| Intent accuracy (7 classes) | 93.8% (30/32) |
+| Over-escalation (owner bothered when the draft was fine) | 16.7% (2/12) |
+| Cost per enquiry | **$0.00042** |
+| AI latency p50 / p95 | 2.3 s / 4.8 s |
+
+**What dev taught us** (reports in [`eval/results/`](eval/results/)):
+- The first prompt listed intent names without defining them, which cost 2 intent misses. Its "availability isn't in the facts, so escalate" rule escalated a harmless Sunday request.
+- Narrowing that rule fixed over-escalation but **dropped escalation recall to 87.5%**: "please call me" and a prompt-injection message slipped through, because the old over-broad rule had been catching them by accident. Naming both explicitly in the escalation list brought dev to 24/24. This is exactly why the eval exists.
+
+**Known limitation:** the price guardrail only accepts prices printed on the menu, so a correctly calculated total ("R450 + R20 = R470") is flagged and sent to the owner. That is safe, but it's most of the over-escalation. Next step: allow sums of menu prices, proven on new dev cases first.
+
+Earlier live checks on the real deployment: a package price quoted correctly with the deposit terms, a prompt-injection message resisted, a complaint routed to the owner, and a "Friday" request with a Saturday date caught. End to end (form to email) takes 6–18 s on the 1 GB free-tier VM.
 
 ## Hosting ($0/month)
 
@@ -44,7 +56,7 @@ flowchart LR
 |---|---|---|
 | Website + form route | Vercel (Hobby) | Free |
 | n8n + HTTPS | Oracle Cloud Always Free VM (Johannesburg), Docker + Caddy (Let's Encrypt), [`deploy/`](deploy/README.md) | Free |
-| AI | Anthropic API | ~$0.001 per enquiry |
+| AI | Anthropic API | ~$0.0004 per enquiry (measured) |
 | Log + notifications | The operator's Google Sheet and Gmail | Free |
 
 `scripts/deploy.sh <ip>` provisions the VM (Docker, swap, firewall), imports the workflow and credential **with n8n stopped**, and starts n8n behind Caddy. [`deploy/README.md`](deploy/README.md) lists the gotchas found the hard way.
@@ -68,4 +80,4 @@ The customer's consent is captured on the form. Data goes only to the operator's
 
 - **v2:** offer free slots from Google Calendar in the draft reply (the scope is already granted).
 - **WhatsApp channel** through the business's own Meta account. This was the original plan ([REQUIREMENTS.md](REQUIREMENTS.md), [`whatsapp-templates/`](whatsapp-templates/)) and was paused because Meta restricted the developer's own profile, which is why the website-form channel came first.
-- An eval set of 50+ labelled enquiries, as in [ai-support-triage](https://github.com/mmoshabe/ai-support-triage).
+- Price guardrail that accepts sums of menu prices (see the known limitation above).
