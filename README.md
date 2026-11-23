@@ -25,7 +25,7 @@ flowchart LR
    - The **knowledge base** is built from the salon website's own content files (`scripts/build_knowledge.py`). When the owner changes a price in the site's admin, rebuilding keeps the assistant in sync. There is one source of truth.
    - **Guardrails in code, not in the prompt.** Every price in the draft must appear in the price list. A draft that confirms a booking is flagged. A weekday that doesn't match the chosen date is flagged. Low confidence goes to the owner. Complaints, refunds, reschedules, medical or allergy questions, and party or course bookings always go to the owner.
    - **Prompt injection:** the enquiry text is passed as data inside tags, and the checks above run on the output whatever the prompt said.
-3. **Google**, through one OAuth credential with least-privilege scopes: `gmail.send` (send-only; it can't read mail), `spreadsheets`, and `calendar.events` (reserved for v2). n8n's default Gmail scope asks for full mailbox access, so it was replaced.
+3. **Google**, through one OAuth credential with least-privilege scopes: `gmail.send` (send-only; it can't read mail), `spreadsheets`, and `calendar.freebusy` (busy/free times only, for v2 slot suggestions). n8n's default Gmail scope asks for full mailbox access, so it was replaced.
 
 ## Evaluation
 
@@ -49,6 +49,29 @@ flowchart LR
 **Price guardrail, round two:** the first version accepted only prices printed on the menu, so a correctly calculated total ("R450 + R20 = R470") was flagged and caused most of the over-escalation. It now also accepts multiples of a per-unit price that the draft itself quotes ("R10 per nail", so R100 for ten nails), and totals of 2 to 4 verified prices (R1 600 + 2 × R350 = R2 300). Hallucinated, customer-claimed and miscalculated prices are still caught: 17 deterministic unit tests ([`eval/check.test.mjs`](eval/check.test.mjs)) cover both sides. Because the change is in code, not the model, `run.mjs --rescore` replays the saved AI outputs through the new check for free. On the held-out test that took over-escalation from 16.7% to 8.3%, with escalation recall unchanged at 100%. Three new dev cases with real arithmetic drafts all pass.
 
 Earlier live checks on the real deployment: a package price quoted correctly with the deposit terms, a prompt-injection message resisted, a complaint routed to the owner, and a "Friday" request with a Saturday date caught. End to end (form to email) takes 6–18 s on the 1 GB free-tier VM.
+
+## Calendar slot suggestions (v2, off until the salon shares its calendar)
+
+When `CALENDAR_ID` is set, the workflow branches after accepting the form:
+
+```mermaid
+flowchart LR
+    R[Respond ok] --> Q{Calendar on?}
+    Q -->|yes| P[Plan slot search<br/>preferred date, or next open days] --> FB[Google free/busy] --> SS[Suggest slots<br/>opening hours, busy blocks,<br/>2 h notice, spread over the day]
+    SS --> B[Build AI request]
+    Q -->|no| B
+```
+
+- **Least privilege:** the scope is `calendar.freebusy`, which sees busy and free times only, never event titles or guests. It replaced the unused `calendar.events`, so the app now asks for *less*. Google classes it as non-sensitive. The salon only has to share its calendar as "free/busy".
+- **The AI may offer the suggested times but never reserve them.** If the customer's own time is taken, it says so and offers the free ones.
+- **Time guardrail in code:** any time in the draft that isn't an offered slot, an opening or closing time from the facts, or the customer's own words is flagged and sent to the owner. The AI can't invent availability.
+- **Fails safe:** if the calendar call fails, the enquiry carries on without suggestions.
+- **Tests:**
+  - 13 unit tests for the slot maths ([`eval/slots.test.mjs`](eval/slots.test.mjs));
+  - 26 for the guardrails, including the time check ([`eval/check.test.mjs`](eval/check.test.mjs));
+  - 4 dev eval cases with slots: all 4 offered a real slot, 0 drafts mentioned an un-offered time;
+  - a re-score of all 56 earlier drafts: the new time check added no false flags.
+- **Demo:** run end to end on local n8n against a demo calendar with a 08:00–11:00 booking. A Saturday 9am request came back with "9am doesn't look free, but 11:00, 12:00 or 13:00 are open".
 
 ## Hosting ($0/month)
 
@@ -78,5 +101,5 @@ The customer's consent is captured on the form. Data goes only to the operator's
 
 ## Roadmap
 
-- **v2:** offer free slots from Google Calendar in the draft reply (the scope is already granted).
+- **v2:** turn on slot suggestions for the live salon once the owner shares her calendar's free/busy (built and tested, see above).
 - **WhatsApp channel** through the business's own Meta account. This was the original plan ([REQUIREMENTS.md](REQUIREMENTS.md), [`whatsapp-templates/`](whatsapp-templates/)) and was paused because Meta restricted the developer's own profile, which is why the website-form channel came first.

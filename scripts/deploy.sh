@@ -46,6 +46,9 @@ umask 077
   echo "ENQUIRY_WEBHOOK_SECRET=$ENQUIRY_WEBHOOK_SECRET"
   echo "ENQUIRY_SHEET_ID=$ENQUIRY_SHEET_ID"
   echo "OWNER_NOTIFY_EMAIL=$OWNER_NOTIFY_EMAIL"
+  echo "CALENDAR_ID=${SERVER_CALENDAR_ID:-}"     # the salon's calendar; unset = slot suggestions off
+  echo "OPENING_HOURS=${OPENING_HOURS:-}"
+  echo "SLOT_MINUTES=${SLOT_MINUTES:-60}"
 } > deploy/.env
 
 $SSH 'mkdir -p ~/n8n && { [ ! -d ~/n8n/import ] || sudo chown -R "$USER": ~/n8n/import; }'   # undo the uid-1000 handover from last deploy

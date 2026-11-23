@@ -24,6 +24,9 @@ services:
       - ENQUIRY_WEBHOOK_SECRET=${ENQUIRY_WEBHOOK_SECRET}
       - ENQUIRY_SHEET_ID=${ENQUIRY_SHEET_ID}
       - OWNER_NOTIFY_EMAIL=${OWNER_NOTIFY_EMAIL}
+      - CALENDAR_ID=${CALENDAR_ID:-}          # empty = slot suggestions off
+      - OPENING_HOURS=${OPENING_HOURS:-}
+      - SLOT_MINUTES=${SLOT_MINUTES:-60}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./import:/import:ro
