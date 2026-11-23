@@ -13,6 +13,8 @@ const arg = (k, d) => { const i = process.argv.indexOf(k); return i > -1 ? proce
 const SPLIT = arg('--split', 'dev');
 const LIMIT = Number(arg('--limit', 0));
 const DRY = process.argv.includes('--dry');
+const RESCORE = arg('--rescore', '');   // re-run the checks on a saved results file: no API calls
+const IDS = arg('--ids', '');            // comma-separated case ids
 const CONCURRENCY = 4;
 
 // Secrets from .env (never printed)
@@ -24,7 +26,7 @@ if (existsSync(join(ROOT, '.env'))) {
   }
 }
 const API_KEY = process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY;
-if (!DRY && !API_KEY) throw new Error('ANTHROPIC_API_KEY missing (.env)');
+if (!DRY && !RESCORE && !API_KEY) throw new Error('ANTHROPIC_API_KEY missing (.env)');
 
 const bundle = JSON.parse(execFileSync('python3', [join(ROOT, 'scripts/build_workflow.py'), '--eval-bundle'],
   { env: { ...process.env, CLIENT_PROFILE: 'example' } }).toString());
@@ -37,7 +39,9 @@ function runNode(code, input, named = {}) {
 }
 
 const cases = readFileSync(join(ROOT, 'eval/cases.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l))
-  .filter(c => SPLIT === 'all' || c.split === SPLIT).slice(0, LIMIT || undefined);
+  .filter(c => SPLIT === 'all' || c.split === SPLIT).filter(c => !IDS || IDS.split(',').includes(c.id))
+  .slice(0, LIMIT || undefined);
+const saved = RESCORE ? Object.fromEntries(JSON.parse(readFileSync(RESCORE, 'utf8')).results.map(r => [r.id, r])) : {};
 
 async function callClaude(request) {
   if (DRY) {
@@ -67,8 +71,17 @@ async function runCase(c) {
   const built = runNode(bundle.build_js, enquiry);
   const t0 = Date.now();
   let response, error = null;
-  try { response = await callClaude(built.request); } catch (e) { error = String(e.message || e); }
-  const ms = Date.now() - t0;
+  if (RESCORE) {
+    const r = saved[c.id];
+    if (!r || r.error) return { id: c.id, split: c.split, error: r ? r.error : 'not in saved results', ms: 0 };
+    const ai = r.raw || { intent: r.intent, services: [], requested_date: '', urgency: 'normal', needs_owner: r.model_needs_owner,
+      owner_reason: '', reply_draft: r.reply_draft, facts_used: [], confidence: r.confidence };
+    response = { stop_reason: 'end_turn', model: 'rescored', usage: r.usage || {}, content: [{ type: 'text', text: JSON.stringify(ai) }] };
+    response._cost = r.cost; response._ms = r.ms;
+  } else {
+    try { response = await callClaude(built.request); } catch (e) { error = String(e.message || e); }
+  }
+  const ms = response?._ms ?? Date.now() - t0;
   if (error) return { id: c.id, split: c.split, error, ms };
   let raw = {};
   try { raw = JSON.parse(response.content.find(b => b.type === 'text').text); } catch { /* checked below */ }
@@ -83,7 +96,8 @@ async function runCase(c) {
     checks_failed: out.checks_failed, owner_reason: out.owner_reason,
     confirmed_booking: out.checks_failed.some(x => x.includes('confirms a booking')),
     unknown_price: out.checks_failed.some(x => x.startsWith('price not in')),
-    confidence: out.confidence, cost: out.ai_cost_usd, reply_draft: out.reply_draft,
+    confidence: out.confidence, cost: response._cost ?? out.ai_cost_usd, reply_draft: out.reply_draft,
+    raw, usage: response.usage,
   };
 }
 
@@ -104,6 +118,7 @@ const q = p => ms.length ? ms[Math.min(ms.length - 1, Math.floor(p * ms.length))
 const cost = ok.reduce((s, r) => s + (r.cost || 0), 0);
 const metrics = {
   split: SPLIT, model: bundle.model, cases: results.length, errors: results.length - ok.length, dry: DRY,
+  rescored_from: RESCORE ? RESCORE.replace(ROOT + '/', '') : undefined,
   intent_accuracy: pct(ok.filter(r => r.intent_ok).length, ok.length),
   escalation_recall: pct(mustEsc.filter(r => r.needs_owner).length, mustEsc.length),
   escalation_recall_model_only: pct(mustEsc.filter(r => r.model_needs_owner).length, mustEsc.length),
@@ -118,7 +133,7 @@ const metrics = {
 
 const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
 const dir = join(ROOT, 'eval/results'); mkdirSync(dir, { recursive: true });
-const base = join(dir, `${SPLIT}-${DRY ? 'dry-' : ''}${stamp}`);
+const base = join(dir, `${SPLIT}-${DRY ? 'dry-' : RESCORE ? 'rescored-' : ''}${stamp}`);
 writeFileSync(`${base}.json`, JSON.stringify({ metrics, results }, null, 2));
 const misses = results.filter(r => r.error || !r.intent_ok || !r.owner_ok || r.quote_missing?.length);
 const md = [

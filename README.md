@@ -38,7 +38,7 @@ flowchart LR
 | Drafts that confirm a booking | **0** |
 | Prices that had to be quoted, quoted exactly | 100% (4/4) |
 | Intent accuracy (7 classes) | 93.8% (30/32) |
-| Over-escalation (owner bothered when the draft was fine) | 16.7% (2/12) |
+| Over-escalation (owner bothered when the draft was fine) | 8.3% (1/12), down from 16.7% after the price-check fix |
 | Cost per enquiry | **$0.00042** |
 | AI latency p50 / p95 | 2.3 s / 4.8 s |
 
@@ -46,7 +46,7 @@ flowchart LR
 - The first prompt listed intent names without defining them, which cost 2 intent misses. Its "availability isn't in the facts, so escalate" rule escalated a harmless Sunday request.
 - Narrowing that rule fixed over-escalation but **dropped escalation recall to 87.5%**: "please call me" and a prompt-injection message slipped through, because the old over-broad rule had been catching them by accident. Naming both explicitly in the escalation list brought dev to 24/24. This is exactly why the eval exists.
 
-**Known limitation:** the price guardrail only accepts prices printed on the menu, so a correctly calculated total ("R450 + R20 = R470") is flagged and sent to the owner. That is safe, but it's most of the over-escalation. Next step: allow sums of menu prices, proven on new dev cases first.
+**Price guardrail, round two:** the first version accepted only prices printed on the menu, so a correctly calculated total ("R450 + R20 = R470") was flagged and caused most of the over-escalation. It now also accepts multiples of a per-unit price that the draft itself quotes ("R10 per nail", so R100 for ten nails), and totals of 2 to 4 verified prices (R1 600 + 2 × R350 = R2 300). Hallucinated, customer-claimed and miscalculated prices are still caught: 17 deterministic unit tests ([`eval/check.test.mjs`](eval/check.test.mjs)) cover both sides. Because the change is in code, not the model, `run.mjs --rescore` replays the saved AI outputs through the new check for free. On the held-out test that took over-escalation from 16.7% to 8.3%, with escalation recall unchanged at 100%. Three new dev cases with real arithmetic drafts all pass.
 
 Earlier live checks on the real deployment: a package price quoted correctly with the deposit terms, a prompt-injection message resisted, a complaint routed to the owner, and a "Friday" request with a Saturday date caught. End to end (form to email) takes 6–18 s on the 1 GB free-tier VM.
 
@@ -80,4 +80,3 @@ The customer's consent is captured on the form. Data goes only to the operator's
 
 - **v2:** offer free slots from Google Calendar in the draft reply (the scope is already granted).
 - **WhatsApp channel** through the business's own Meta account. This was the original plan ([REQUIREMENTS.md](REQUIREMENTS.md), [`whatsapp-templates/`](whatsapp-templates/)) and was paused because Meta restricted the developer's own profile, which is why the website-form channel came first.
-- Price guardrail that accepts sums of menu prices (see the known limitation above).

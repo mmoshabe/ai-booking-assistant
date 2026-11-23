@@ -1,0 +1,205 @@
+{
+  "metrics": {
+    "split": "dev",
+    "model": "claude-haiku-5-5",
+    "cases": 3,
+    "errors": 0,
+    "dry": false,
+    "intent_accuracy": "100.0% (3/3)",
+    "escalation_recall": "100.0% (1/1)",
+    "escalation_recall_model_only": "100.0% (1/1)",
+    "over_escalation": "0.0% (0/2)",
+    "needs_owner_accuracy": "100.0% (3/3)",
+    "required_prices_quoted": "100.0% (3/3)",
+    "drafts_confirming_a_booking": 0,
+    "drafts_with_price_not_on_menu": 1,
+    "cost_usd_total": 0.00153,
+    "cost_usd_per_enquiry": 0.00051,
+    "latency_ms_p50": 2590,
+    "latency_ms_p95": 7028
+  },
+  "results": [
+    {
+      "id": "d25",
+      "split": "dev",
+      "message": "How much would a gel overlay and a classic pedicure be together?",
+      "ms": 2590,
+      "expect": {
+        "intent": "price_question",
+        "needs_owner": false,
+        "must_quote": [
+          "R300",
+          "R280"
+        ]
+      },
+      "intent": "price_question",
+      "intent_ok": true,
+      "model_needs_owner": false,
+      "needs_owner": false,
+      "owner_ok": true,
+      "quote_missing": [],
+      "checks_failed": [],
+      "owner_reason": "",
+      "confirmed_booking": false,
+      "unknown_price": false,
+      "confidence": 0.9,
+      "cost": 0.000359,
+      "reply_draft": "Hi Naledi, thanks for getting in touch! A gel overlay is R300 (60 min) and a classic pedicure is R280 (60 min), so together that comes to R580. Our team is happy to help if you'd like to book a slot, and they'll confirm the time with you. Warm regards, Example Salon",
+      "raw": {
+        "intent": "price_question",
+        "services": [
+          "Gel overlay",
+          "Classic pedicure"
+        ],
+        "requested_date": "",
+        "urgency": "low",
+        "needs_owner": false,
+        "owner_reason": "",
+        "reply_draft": "Hi Naledi, thanks for getting in touch! A gel overlay is R300 (60 min) and a classic pedicure is R280 (60 min), so together that comes to R580. Our team is happy to help if you'd like to book a slot, and they'll confirm the time with you. Warm regards, Example Salon",
+        "facts_used": [
+          "Gel overlay: R300 (60 min)",
+          "Classic pedicure: R280 (60 min)"
+        ],
+        "confidence": 0.9
+      },
+      "usage": {
+        "input_tokens": 2485,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 221,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "speed": "standard"
+      }
+    },
+    {
+      "id": "d26",
+      "split": "dev",
+      "message": "What would a gel overlay with nail art on all ten nails cost?",
+      "ms": 2533,
+      "expect": {
+        "intent": "price_question",
+        "needs_owner": false,
+        "must_quote": [
+          "R300"
+        ]
+      },
+      "intent": "price_question",
+      "intent_ok": true,
+      "model_needs_owner": false,
+      "needs_owner": false,
+      "owner_ok": true,
+      "quote_missing": [],
+      "checks_failed": [],
+      "owner_reason": "",
+      "confirmed_booking": false,
+      "unknown_price": false,
+      "confidence": 0.9,
+      "cost": 0.000364,
+      "reply_draft": "Hi Naledi, thanks for getting in touch! A gel overlay is R300 (60 min), and nail art is R10 per nail, so ten nails would add R100, bringing the total to R400 before any extras. Our team is happy to confirm the details with you. You can also reach us on 010 000 0000 or hello@example.com. Warm regards, Example Salon",
+      "raw": {
+        "intent": "price_question",
+        "services": [
+          "Gel overlay",
+          "Nail art"
+        ],
+        "requested_date": "",
+        "urgency": "low",
+        "needs_owner": false,
+        "owner_reason": "",
+        "reply_draft": "Hi Naledi, thanks for getting in touch! A gel overlay is R300 (60 min), and nail art is R10 per nail, so ten nails would add R100, bringing the total to R400 before any extras. Our team is happy to confirm the details with you. You can also reach us on 010 000 0000 or hello@example.com. Warm regards, Example Salon",
+        "facts_used": [
+          "Gel overlay: R300 (60 min)",
+          "Nail art: R10 per nail"
+        ],
+        "confidence": 0.9
+      },
+      "usage": {
+        "input_tokens": 2486,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 230,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "speed": "standard"
+      }
+    },
+    {
+      "id": "d27",
+      "split": "dev",
+      "message": "What's the price of a pamper party for 6 of us?",
+      "ms": 7028,
+      "expect": {
+        "intent": "party_enquiry",
+        "needs_owner": true,
+        "must_quote": [
+          "R1 600"
+        ]
+      },
+      "intent": "party_enquiry",
+      "intent_ok": true,
+      "model_needs_owner": true,
+      "needs_owner": true,
+      "owner_ok": true,
+      "quote_missing": [],
+      "checks_failed": [
+        "price not in the price list: R2300"
+      ],
+      "owner_reason": "Party enquiry for a group of 6 (Pamper Party). Get-togethers need a R500 deposit and planning. The requested date, 2026-12-13, falls on a Sunday, when the salon is closed.; price not in the price list: R2300",
+      "confirmed_booking": false,
+      "unknown_price": true,
+      "confidence": 0.85,
+      "cost": 0.000808,
+      "reply_draft": "Hi Naledi, thanks for reaching out! The Pamper Party (4 to 6 guests, 2 hours, one treatment each plus bubbly) is R1 600 for 4 guests, plus R350 per extra guest, so for 6 of you that comes to R2 300. All get-togethers need a R500 deposit to secure the date, paid at least 7 days before. Please note we're closed on Sundays, so 13 December won't work. We're open Tuesday to Friday 09:00-18:00 and Saturday 08:00-14:00. Let us know a day that suits you and a team member will confirm the details with you. Warm regards, Example Salon",
+      "raw": {
+        "intent": "party_enquiry",
+        "services": [
+          "Pamper Party"
+        ],
+        "requested_date": "2026-12-13",
+        "urgency": "normal",
+        "needs_owner": true,
+        "owner_reason": "Party enquiry for a group of 6 (Pamper Party). Get-togethers need a R500 deposit and planning. The requested date, 2026-12-13, falls on a Sunday, when the salon is closed.",
+        "reply_draft": "Hi Naledi, thanks for reaching out! The Pamper Party (4 to 6 guests, 2 hours, one treatment each plus bubbly) is R1 600 for 4 guests, plus R350 per extra guest, so for 6 of you that comes to R2 300. All get-togethers need a R500 deposit to secure the date, paid at least 7 days before. Please note we're closed on Sundays, so 13 December won't work. We're open Tuesday to Friday 09:00-18:00 and Saturday 08:00-14:00. Let us know a day that suits you and a team member will confirm the details with you. Warm regards, Example Salon",
+        "facts_used": [
+          "Pamper Party (4 to 6 guests, 2 hours, one treatment each plus bubbly): R1 600 for 4 guests, R350 per extra guest",
+          "All get-togethers need a R500 deposit to secure the date, paid at least 7 days before",
+          "Sunday, Monday and public holidays: closed",
+          "Tuesday to Friday: 09:00-18:00",
+          "Saturday: 08:00-14:00"
+        ],
+        "confidence": 0.85
+      },
+      "usage": {
+        "input_tokens": 2486,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 1118,
+        "output_tokens_details": {
+          "thinking_tokens": 612
+        },
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "speed": "standard"
+      }
+    }
+  ]
+}

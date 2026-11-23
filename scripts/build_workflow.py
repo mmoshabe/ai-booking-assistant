@@ -104,11 +104,31 @@ try {
          owner_reason: 'AI output unreadable', reply_draft: '', facts_used: [], confidence: 0 };
   issues.push('AI output could not be parsed');
 }
-// 1. Every price in the draft must exist in the salon's price list (R300, R1 200 ...).
-const norm = s => s.replace(/\s+/g, '');
-const known = new Set((knowledge.match(/R\s?\d[\d\s]*/g) || []).map(norm));
-const quoted = (ai.reply_draft.match(/R\s?\d[\d\s]*/g) || []).map(norm);
-const unknown = quoted.filter(p => !known.has(p));
+// 1. Every price in the draft must come from the price list (R300, R1 200 ...): a listed price,
+//    a multiple of a per-unit price it also quotes ("R10 per nail" -> R20 for two), or a total of 2-4 other
+//    verified prices in the same draft, where a part may be n x a quoted per-unit price
+//    (R1 600 + 2 x R350 = R2 300). Anything else is flagged.
+const PRICE = /R\s?\d[\d\s]*/g;
+const amount = s => Number(s.replace(/\D/g, ''));
+const known = new Set((knowledge.match(PRICE) || []).map(amount));
+const perUnit = [...knowledge.matchAll(/R\s?(\d[\d\s]*?)\s*per\b/g)].map(m => amount(m[1])).filter(u => u > 0);
+const quoted = [...new Set((ai.reply_draft.match(PRICE) || []).map(amount))];
+// multiples only of a per-unit price the draft itself quotes (else R10 per nail would excuse any round number)
+const units = perUnit.filter(u => quoted.includes(u));
+const verified = new Set(quoted.filter(p => known.has(p) || units.some(u => p % u === 0 && p / u <= 20)));
+const isTotal = (target, parts) => {
+  const go = (i, sum, n) => (n >= 2 && sum === target) || (n < 4 && sum < target &&
+    parts.slice(i).some((v, j) => go(i + j + 1, sum + v, n + 1)));
+  return go(0, 0, 0);
+};
+for (let grew = true; grew;) {
+  grew = false;
+  for (const p of quoted) {
+    const parts = [...[...verified].filter(v => v !== p), ...units.flatMap(u => Array.from({ length: 19 }, (_, k) => (k + 2) * u))];
+    if (!verified.has(p) && isTotal(p, parts)) { verified.add(p); grew = true; }
+  }
+}
+const unknown = quoted.filter(p => !verified.has(p)).map(p => `R${p}`);
 if (unknown.length) issues.push(`price not in the price list: ${unknown.join(', ')}`);
 // 2. Never confirm a booking.
 if (/\b(you're|you are|we've|we have)\s+(booked|confirmed)\b/i.test(ai.reply_draft)) issues.push('draft confirms a booking');
