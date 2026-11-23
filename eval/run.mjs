@@ -34,7 +34,7 @@ const bundle = JSON.parse(execFileSync('python3', [join(ROOT, 'scripts/build_wor
 // Run an n8n Code-node body: it reads $input / $('Node name') and returns [{ json }].
 function runNode(code, input, named = {}) {
   const $input = { first: () => ({ json: input }) };
-  const $ = name => ({ first: () => ({ json: named[name] }) });
+  const $ = name => ({ first: () => ({ json: named[name] }), isExecuted: name in named });
   return new Function('$input', '$', '$env', 'Buffer', code)($input, $, {}, Buffer)[0].json;
 }
 
@@ -68,7 +68,8 @@ const norm = s => (s || '').replace(/[\s,]/g, '');
 
 async function runCase(c) {
   const enquiry = { ...c.enquiry, email: 'eval@example.com', phone: '0100000000', consent: true };
-  const built = runNode(bundle.build_js, enquiry);
+  // c.slots: what the calendar step would have suggested (omitted = calendar off)
+  const built = runNode(bundle.build_js, enquiry, { 'Verify secret': enquiry, ...(c.slots ? { 'Suggest slots': { slots: c.slots } } : {}) });
   const t0 = Date.now();
   let response, error = null;
   if (RESCORE) {
@@ -85,7 +86,7 @@ async function runCase(c) {
   if (error) return { id: c.id, split: c.split, error, ms };
   let raw = {};
   try { raw = JSON.parse(response.content.find(b => b.type === 'text').text); } catch { /* checked below */ }
-  const out = runNode(bundle.check_js, response, { 'Build AI request': { enquiry } });
+  const out = runNode(bundle.check_js, response, { 'Build AI request': { enquiry, slots: built.slots } });
   const e = c.expect;
   return {
     id: c.id, split: c.split, message: c.enquiry.message, ms,
@@ -96,6 +97,9 @@ async function runCase(c) {
     checks_failed: out.checks_failed, owner_reason: out.owner_reason,
     confirmed_booking: out.checks_failed.some(x => x.includes('confirms a booking')),
     unknown_price: out.checks_failed.some(x => x.startsWith('price not in')),
+    unoffered_time: out.checks_failed.some(x => x.startsWith('time not offered')),
+    slots_offered: built.slots.map(s => s.label),
+    offered_a_slot: built.slots.some(sl => (out.reply_draft || '').includes(sl.time)),
     confidence: out.confidence, cost: response._cost ?? out.ai_cost_usd, reply_draft: out.reply_draft,
     raw, usage: response.usage,
   };
@@ -127,6 +131,8 @@ const metrics = {
   required_prices_quoted: pct(quoted.filter(r => !r.quote_missing.length).length, quoted.length),
   drafts_confirming_a_booking: ok.filter(r => r.confirmed_booking).length,
   drafts_with_price_not_on_menu: ok.filter(r => r.unknown_price).length,
+  drafts_with_time_not_offered: ok.filter(r => r.unoffered_time).length,
+  slot_cases_offering_a_slot: pct(ok.filter(r => r.slots_offered?.length && r.offered_a_slot).length, ok.filter(r => r.slots_offered?.length).length),
   cost_usd_total: +cost.toFixed(5), cost_usd_per_enquiry: ok.length ? +(cost / ok.length).toFixed(5) : 0,
   latency_ms_p50: q(0.5), latency_ms_p95: q(0.95),
 };

@@ -34,6 +34,10 @@ The cases run against the fictional Example Salon ([`knowledge/example.md`](../k
 
 Prices that a correct draft has to contain exactly as written in the facts (for example `R1 600`). Leave the list empty when quoting a price isn't required.
 
+## Calendar slots (`slots`)
+
+Some cases include `slots`: the free times the calendar step would offer. They don't change `intent` or `needs_owner` (a booking with slots is still an ordinary booking). They are scored as: the draft should offer at least one of them for a booking, and no draft may mention a time that wasn't offered, isn't an opening or closing time in the facts, and isn't in the customer's own message (the code check flags this).
+
 ## Not scored
 
 The draft's tone, length, and whether it mentions the patch test. Those are reviewed by reading `results/*.md`, not counted.

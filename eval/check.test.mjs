@@ -8,12 +8,12 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { check_js } = JSON.parse(execFileSync('python3', [join(ROOT, 'scripts/build_workflow.py'), '--eval-bundle'],
   { env: { ...process.env, CLIENT_PROFILE: 'example' } }).toString());
 
-function check(reply_draft, enquiry = { message: '', preferredDate: '' }, extra = {}) {
+function check(reply_draft, enquiry = { message: '', preferredDate: '' }, extra = {}, slots = []) {
   const ai = { intent: 'price_question', services: [], requested_date: '', urgency: 'normal', needs_owner: false,
     owner_reason: '', reply_draft, facts_used: [], confidence: 0.9, ...extra };
   const response = { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(ai) }], usage: {} };
   const $input = { first: () => ({ json: response }) };
-  const $ = () => ({ first: () => ({ json: { enquiry } }) });
+  const $ = () => ({ first: () => ({ json: { enquiry, slots } }) });
   return new Function('$input', '$', '$env', 'Buffer', check_js)($input, $, {}, Buffer)[0].json;
 }
 
@@ -40,6 +40,25 @@ let failed = 0;
 for (const [name, draft, shouldFlag] of cases) {
   const flag = priceFlag(check(draft));
   const ok = Boolean(flag) === shouldFlag;
+  if (!ok) failed++;
+  console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${flag ? `  (${flag})` : ''}`);
+}
+// Time guardrail: only offered slots, times from the facts (hours), or the customer's own words
+const slot = [{ start: '2026-11-28T07:00:00.000Z', time: '09:00', label: 'Sat 28 Nov 09:00' }];
+const timeFlag = out => out.checks_failed.find(x => x.startsWith('time not offered')) || null;
+const tcases = [
+  ['offered slot', check('We have Sat 28 Nov at 09:00 free.', undefined, {}, slot), false],
+  ['offered slot as 9am', check('Saturday at 9am is open.', undefined, {}, slot), false],
+  ['closing time from the facts', check('We close at 18:00 on weekdays (6pm).'), false],
+  ["customer's own time", check('We have noted your 2pm request; the team will confirm.', { message: 'Can I come at 2pm?', preferredDate: '' }), false],
+  ["customer's bare hour", check('Your request to move to 12:00 is noted.', { message: 'Can I move my 10am to 12?', preferredDate: '' }), false],
+  ['bare number that is a count', check('We can do 3:00 for your party.', { message: 'Party for 3 people', preferredDate: '' }), true],
+  ['invented time, no slots', check('We have a gap at 11:30 on Saturday.'), true],
+  ['invented time next to a slot', check('09:00 or 15:00 would work.', undefined, {}, slot), true],
+  ['durations are not times', check('The facial takes 60 min and lashes 2 hours.'), false],
+];
+for (const [name, out, shouldFlag] of tcases) {
+  const flag = timeFlag(out), ok = Boolean(flag) === shouldFlag;
   if (!ok) failed++;
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${flag ? `  (${flag})` : ''}`);
 }
