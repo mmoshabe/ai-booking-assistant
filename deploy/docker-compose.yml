@@ -1,0 +1,50 @@
+# n8n + automatic HTTPS (Caddy / Let's Encrypt) on one small VM.
+# Values come from deploy/.env on the server (never committed).
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:2.48.7
+    restart: unless-stopped
+    environment:
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PROTOCOL=https
+      - N8N_PORT=5678
+      - WEBHOOK_URL=https://${N8N_HOST}/
+      - N8N_EDITOR_BASE_URL=https://${N8N_HOST}/
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_PROXY_HOPS=1
+      - GENERIC_TIMEZONE=Africa/Johannesburg
+      - TZ=Africa/Johannesburg
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      - NODE_OPTIONS=--max-old-space-size=640   # 1 GB micro VM (+ swap)
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=720        # keep 30 days of runs (POPIA: don't hoard data)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ENQUIRY_WEBHOOK_SECRET=${ENQUIRY_WEBHOOK_SECRET}
+      - ENQUIRY_SHEET_ID=${ENQUIRY_SHEET_ID}
+      - OWNER_NOTIFY_EMAIL=${OWNER_NOTIFY_EMAIL}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./import:/import:ro
+    expose:
+      - "5678"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - N8N_HOST=${N8N_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./site:/srv/site:ro
+      - caddy_data:/data
+    depends_on:
+      - n8n
+
+volumes:
+  n8n_data:
+  caddy_data:

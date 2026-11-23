@@ -1,0 +1,55 @@
+# Fill this in with the business owner (about 30 minutes). The bot only says what's in here and in faq.md.
+
+business:
+  name: ""
+  type: ""            # salon / barber / mechanic / clinic ...
+  address: ""
+  google_maps_link: ""
+  owner_name: ""
+  owner_whatsapp: ""  # where handoffs go
+  languages: [English]  # add Afrikaans, isiZulu, etc. if customers write in them
+
+hours:                # 24h format; "closed" if closed
+  monday: "08:00-17:00"
+  tuesday: "08:00-17:00"
+  wednesday: "08:00-17:00"
+  thursday: "08:00-17:00"
+  friday: "08:00-17:00"
+  saturday: "08:00-13:00"
+  sunday: closed
+  public_holidays: closed
+
+staff:                # leave empty if bookings aren't per person
+  - name: ""
+    services: []      # which services this person does
+    days: []          # e.g. [monday, tuesday]
+
+services:             # one entry per bookable service
+  - name: "Example: Ladies cut and blow-dry"
+    price_rands: 0
+    duration_minutes: 60
+    deposit_rands: 0  # 0 = no deposit
+    notes: ""         # e.g. "price from R350, depends on length"
+
+booking_rules:
+  min_notice_hours: 2         # earliest a booking can be made before the slot
+  max_days_ahead: 30
+  buffer_minutes_between: 0
+  same_day_bookings: true
+  walk_ins: false
+
+deposit_policy: ""        # e.g. "50% deposit to secure the booking, deducted from the bill"
+cancellation_policy: ""   # e.g. "free cancellation up to 24h before; after that the deposit is kept"
+late_policy: ""           # e.g. "more than 15 min late may need to be rescheduled"
+payment_methods: []       # card, cash, EFT, SnapScan ...
+
+handoff_to_owner:         # the bot never handles these itself
+  - complaints
+  - refund requests
+  - price negotiation or discounts
+  - medical or safety questions
+  - anything not covered in this file or faq.md
+
+reminders:
+  send_hours_before: 24
+  ask_to_confirm: true    # customer replies 1 = confirm, 2 = reschedule

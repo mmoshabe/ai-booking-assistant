@@ -1,0 +1,19 @@
+{$N8N_HOST} {
+	encode gzip
+
+	# Public app home + privacy policy (required by Google's OAuth consent screen)
+	handle /about {
+		root * /srv/site
+		rewrite * /index.html
+		file_server
+	}
+	handle /privacy {
+		root * /srv/site
+		rewrite * /privacy.html
+		file_server
+	}
+
+	handle {
+		reverse_proxy n8n:5678
+	}
+}

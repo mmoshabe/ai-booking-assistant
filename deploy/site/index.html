@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{APP_NAME}}</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:720px;margin:2rem auto;padding:0 16px;color:#222;background:#fff}h1{font-size:1.6rem}</style>
+</head>
+<body>
+<h1>{{APP_NAME}}</h1>
+<p>A small automation, operated by Nephtally Moshabeshe, that handles enquiries from a salon website's contact form:</p>
+<ol>
+  <li>The website sends the enquiry to this server.</li>
+  <li>An AI model sorts it (booking, price question, complaint, and so on) and drafts a reply using only the salon's published prices and policies.</li>
+  <li>Automatic checks catch mistakes, such as prices that aren't on the price list or a date that doesn't match the weekday.</li>
+  <li>The enquiry is logged to a Google Sheet and emailed to the person who replies. A human always sends the actual reply.</li>
+</ol>
+<p><a href="/privacy">Privacy policy</a> · Contact: <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a></p>
+</body>
+</html>

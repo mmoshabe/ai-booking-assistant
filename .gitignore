@@ -1,0 +1,12 @@
+.env
+.env.*
+.DS_Store
+.n8n/
+
+# Client-specific (private): profile, knowledge base built from their site, generated workflow
+client.env
+knowledge/*
+!knowledge/example.md
+n8n/enquiry-intake.json
+__pycache__/
+!.env.example
